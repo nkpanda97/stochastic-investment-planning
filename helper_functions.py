@@ -350,7 +350,7 @@ def create_eev_model_qb(x_bar=[1, 2, 3, 4, 5], random_parameters=np.array([1, 1,
     return model
 
 
-def create_model_qc(random_parameters=np.array([1, 1, 1, 1, 1, 1, 1])):
+def create_model_qc(random_parameters=np.array([1, 1, 1, 1, 1, 1, 1, 1, 1])):
     """
     This function creates a diterminestic model for the MOD2 model given in the report and jupyter
     notebook
@@ -425,15 +425,16 @@ def create_model_qc(random_parameters=np.array([1, 1, 1, 1, 1, 1, 1])):
     return model
 
 
-# Createmodel to calculate EEV for Qb
-def create_eev_model_qc(x_bar=[1, 2, 3, 4, 5], random_parameters=np.array([1, 1, 1, 1, 1, 1, 1])):
+# Createmodel to calculate EEV for Qc
+def create_eev_model_qc(x_bar=[1, 2, 3, 4, 5], random_parameters=np.array([1, 1, 1, 1, 1, 1, 1, 1, 1])):
     """
     This function creates a diterminestic model for the MOD1.1 model  to solve for the EEEV value given in the report and
     jupyter notebook
     """
-    # random_parameters=[a1,a2,a3,a4,xi1,xi2,xi3]
-    alpha_i = list(random_parameters[0:4]) + [1]
-    capacity_per_mode = list(random_parameters[4:7])
+    # random_parameters=[tau2, tau3, a1,a2,a3,a4,xi1,xi2,xi3]
+    tau_i = [10] + list(random_parameters[0:2])
+    alpha_i = list(random_parameters[2:6]) + [1]
+    capacity_per_mode = list(random_parameters[6:9])
     model = ConcreteModel()
 
     # Declaring SETS
@@ -452,7 +453,7 @@ def create_eev_model_qc(x_bar=[1, 2, 3, 4, 5], random_parameters=np.array([1, 1,
     model.operation_cost = Param(model.n, within=NonNegativeReals,
                                  mutable=True)  # Cost of each technology for production of per unit capacity
     model.max_investment = 120  # Max budget
-    model.T = Param(model.k, initialize=[10, 6, 1], mutable=False)
+    model.T = Param(model.k, mutable=True)
     model.alpha = Param(model.n, mutable=True)  # Random parameter for operational availability
 
     # Filling parameter
@@ -465,6 +466,7 @@ def create_eev_model_qc(x_bar=[1, 2, 3, 4, 5], random_parameters=np.array([1, 1,
 
     for j in model.k:
         model.capacity_per_mode[j] = capacity_per_mode[j]
+        model.T[j] = tau_i[j]
 
     def capacity_per_mode(model, i):
         return sum(model.y[i, j] for j in model.k) <=  model.alpha[i]*model.x_bar[i]
@@ -479,6 +481,8 @@ def create_eev_model_qc(x_bar=[1, 2, 3, 4, 5], random_parameters=np.array([1, 1,
     model.obj = Objective(expr=sum(model.operation_cost[i] * sum(model.T[j] * model.y[i, j] for j in model.k)
                                    for i in model.n), sense=minimize)
     return model
+
+
 
 
 # ------------------------------ Additional Utility Functions---------------------------------------------------------
@@ -738,7 +742,7 @@ def generate_scenario_qc(number_of_samples, plot=True, seed = None):
 
     s_all, scenario_names__ = generate_combinations([tau_2,tau_3, alpha_1, alpha_2, alpha_3, alpha_4, xi1, xi2, xi3],
                                                     (number_of_samples ** 4) * 27*4,
-                                                    ['tau_1','tau_2','alpha_1', 'alpha_2', 'alpha_3', 'alpha_4', 'xi_1', 'xi_2',
+                                                    ['tau_2','tau_3','alpha_1', 'alpha_2', 'alpha_3', 'alpha_4', 'xi_1', 'xi_2',
                                                      'xi_3'])
 
     s_prob = []
