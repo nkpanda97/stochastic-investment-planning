@@ -136,6 +136,7 @@ def create_eev_model_qa(x_bar=[1, 2, 3, 4], capacity_per_mode=[5, 3, 2], capacit
     for j in model.k:
         model.capacity_per_mode[j] = capacity_per_mode[j]
 
+
     def capacity_per_mode(model, i):
         return sum(model.y[i, j] for j in model.k) <= model.x_bar[i]
 
@@ -157,7 +158,7 @@ def create_eev_model_qa(x_bar=[1, 2, 3, 4], capacity_per_mode=[5, 3, 2], capacit
 # ------------------------------ Models for Q(b) MOD2------------------------------------------------------------------
 
 # Create deterministic model instance for Q(b)
-def create_model_qb(random_parameters=np.array([1, 1, 1, 1, 1, 1, 1])):
+def create_model_qb(random_parameters=np.array([1, 1, 1, 1, 1, 1, 1]), capacity_max=[7, 4, 3]):
     """
     This function creates a diterminestic model for the MOD2 model given in the report and jupyter
     notebook
@@ -177,6 +178,8 @@ def create_model_qb(random_parameters=np.array([1, 1, 1, 1, 1, 1, 1])):
                   within=NonNegativeReals)  # Capacity of technology i={0,1,2,3} effectively used in mode j={0,1,2}
 
     # Defining Parameters------------------------------------------------------------------------------
+    model.capacity_max = Param(model.k, within=NonNegativeReals,
+                               mutable=True)  # Maximum possible value of \xi_j, j={0,1,2}
     model.capacity_per_mode = Param(model.k, within=NonNegativeReals,
                                     mutable=True)  # Stochastic load demand for model j but value is known as the expected value
     model.tech_cost = Param(model.n, within=NonNegativeReals, mutable=True)  # Cost of each technology per unit capacity
@@ -197,6 +200,10 @@ def create_model_qb(random_parameters=np.array([1, 1, 1, 1, 1, 1, 1])):
 
     for j in model.k:
         model.capacity_per_mode[j] = capacity_per_mode[j]
+        model.capacity_max[j] = capacity_max[j]
+
+    def max_demand(model):
+        return sum(model.x[i] for i in model.n) >= sum(model.capacity_max[j] for j in model.k)
 
     def budget_constraint(model):
         return sum(model.tech_cost[i] * model.x[i] for i in model.n) <= model.max_investment
@@ -207,6 +214,7 @@ def create_model_qb(random_parameters=np.array([1, 1, 1, 1, 1, 1, 1])):
     def demand_bal(model, j):
         return sum(model.y[i, j] for i in model.n) >= model.capacity_per_mode[j]
 
+    # model.con1 = Constraint(rule=max_demand)
     model.con2 = Constraint(rule=budget_constraint)
     model.con3 = Constraint(model.n, rule=capacity_per_mode)
     model.con4 = Constraint(model.k, rule=demand_bal)
@@ -228,6 +236,63 @@ def create_model_qb(random_parameters=np.array([1, 1, 1, 1, 1, 1, 1])):
     model.Total_Cost_Objective = Objective(rule=total_cost_rule, sense=minimize)
     return model
 
+
+def create_model_qb_eev(xbar=[], random_parameters=np.array([1, 1, 1, 1, 1, 1, 1])):
+    """
+    This function creates a diterminestic model for the MOD2 model given in the report and jupyter
+    notebook
+    """
+    # random_parameters=[a1,a2,a3,a4,xi1,xi2,xi3]
+    alpha_i = list(random_parameters[0:4]) + [1]
+    capacity_per_mode = list(random_parameters[4:7])
+    model = ConcreteModel()
+
+    # Declaring SETS------------------------------------------------------------------------------
+    model.n = Set(initialize=np.arange(5))  # Number of technologies
+    model.k = Set(initialize=np.arange(3))  # Number of modes
+
+    # Declaring Variables------------------------------------------------------------------------------
+    model.y = Var(model.n, model.k,
+                  within=NonNegativeReals)  # Capacity of technology i={0,1,2,3} effectively used in mode j={0,1,2}
+
+    # Defining Parameters------------------------------------------------------------------------------
+    model.xbar = Param(model.n, within=NonNegativeReals, mutable=True)  # Expected value solutions
+    model.capacity_per_mode = Param(model.k, within=NonNegativeReals,
+                                    mutable=True)  # Stochastic load demand for model j but value is known as the expected value
+    model.tech_cost = Param(model.n, within=NonNegativeReals, mutable=True)  # Cost of each technology per unit capacity
+    model.operation_cost = Param(model.n, within=NonNegativeReals,
+                                 mutable=True)  # Cost of each technology for production of per unit capacity
+    model.max_investment = 120  # Max budget
+    model.T = Param(model.k, initialize=[10, 6, 1], mutable=False)
+    model.alpha = Param(model.n, mutable=True)  # Random parameter for operational availability
+
+    # Filling parameter-----------------------------------------------------------------------------------
+    operating_costs = [4, 4.5, 3.2, 5.5, 10]
+    capital_cost = [10, 7, 16, 6, 0]
+
+    for i in model.n:
+        model.operation_cost[i] = operating_costs[i]
+        model.tech_cost[i] = capital_cost[i]
+        model.alpha[i] = alpha_i[i]
+        model.xbar[i] = xbar[i]
+
+    for j in model.k:
+        model.capacity_per_mode[j] = capacity_per_mode[j]
+
+
+
+    def capacity_per_mode(model, i):
+        return sum(model.y[i, j] for j in model.k) <=  model.alpha[i]*model.xbar[i]
+
+    def demand_bal(model, j):
+        return sum(model.y[i, j] for i in model.n) >= model.capacity_per_mode[j]
+
+    model.con3 = Constraint(model.n, rule=capacity_per_mode)
+    model.con4 = Constraint(model.k, rule=demand_bal)
+
+    model.obj = Objective(expr = sum(model.operation_cost[i] * sum(model.T[j] * model.y[i, j] for j in model.k)
+                                     for i in model.n), sense=minimize)
+    return model
 
 # Createmodel to calculate EEV for Qb
 def create_eev_model_qb(x_bar=[1, 2, 3, 4, 5], random_parameters=np.array([1, 1, 1, 1, 1, 1, 1])):
@@ -660,9 +725,9 @@ def generate_scenario_qc(number_of_samples, plot=True, seed = None):
                  'xi_3_2': 0.4,
                  'xi_3_3': 0.3,
                  'tau_2_5.0': 0.6,
-                 'tau_2_7.5': 0.6,
+                 'tau_2_7.5': 0.4,
                  'tau_3_0.5': 0.6,
-                 'tau_3_1.75': 0.6
+                 'tau_3_1.75': 0.4
                  }
 
     # Sampling from a uniform distribution
@@ -722,6 +787,22 @@ def scenario_creator_qb(scenario_name, S = '', prob_df='' ):
         raise ValueError("Unrecognized scenario name")
 
     model = create_model_qb(random_parameters = mode_demand)
+    sputils.attach_root_node(model, model.ObjCost_first_stage, [model.x])
+    model._mpisppy_probability = prob_df.loc[scenario_name].to_numpy()
+    return model
+
+
+def scenario_creator_qc(scenario_name, S = '', prob_df='' ):
+    """
+              This function is necessary to solve model2 and obtain stochastic (TS) solution using the MPI-SSPY package
+              compatible with pyomo
+    """
+    try:
+        mode_demand = S.loc[scenario_name].to_numpy()
+    except:
+        raise ValueError("Unrecognized scenario name")
+
+    model = create_model_qc(random_parameters = mode_demand)
     sputils.attach_root_node(model, model.ObjCost_first_stage, [model.x])
     model._mpisppy_probability = prob_df.loc[scenario_name].to_numpy()
     return model
@@ -811,43 +892,43 @@ def solve_ws_qb(all_scenarios=pd.DataFrame(), create_model=ConcreteModel()):
     print(tabulate(res, headers =['Items', 'Average Values']))
 
 def solve_ws_qc(all_scenarios=pd.DataFrame(), create_model=ConcreteModel()):
-    x1_ws_qb = []
-    x2_ws_qb = []
-    x3_ws_qb = []
-    x4_ws_qb = []
-    x5_ws_qb = []
-    total_investment_ws_qb = []
-    total_operation_cost_ws_qb = []
+    x1_ws_qc = []
+    x2_ws_qc = []
+    x3_ws_qc = []
+    x4_ws_qc = []
+    x5_ws_qc = []
+    total_investment_ws_qc = []
+    total_operation_cost_ws_qc = []
     for s in tqdm(all_scenarios.iterrows()):
         model = create_model(random_parameters=
                                         [s[1][0], s[1][1], s[1][2],s[1][3], s[1][4], s[1][5], s[1][6], s[1][7], s[1][8]])
 
         SolverFactory('gurobi').solve(model)
-        x1_ws_qb.append(model.x[0].value)
-        x2_ws_qb.append(model.x[1].value)
-        x3_ws_qb.append(model.x[2].value)
-        x4_ws_qb.append(model.x[3].value)
-        x5_ws_qb.append(model.x[4].value)
-        total_investment_ws_qb.append(value(model.ObjCost_first_stage))
-        total_operation_cost_ws_qb.append(value(model.ObjCost_second_stage))
+        x1_ws_qc.append(model.x[0].value)
+        x2_ws_qc.append(model.x[1].value)
+        x3_ws_qc.append(model.x[2].value)
+        x4_ws_qc.append(model.x[3].value)
+        x5_ws_qc.append(model.x[4].value)
+        total_investment_ws_qc.append(value(model.ObjCost_first_stage))
+        total_operation_cost_ws_qc.append(value(model.ObjCost_second_stage))
     res_pd = pd.DataFrame(data={'Scenarios':all_scenarios.index ,
-                                'Technology-1':x1_ws_qb ,
-                                'Technology-2':x2_ws_qb ,
-                                'Technology-3':x3_ws_qb ,
-                                'Technology-4':x4_ws_qb ,
-                                'Technology-5':x5_ws_qb ,
-                                'Total Investment':total_investment_ws_qb ,
-                                'Total Operation Cost':total_operation_cost_ws_qb ,
-                                'Total objective cost': np.array(total_investment_ws_qb)+
-                                                        np.array(total_operation_cost_ws_qb)})
-    res=[['Technology-1',np.mean(x1_ws_qb)] ,
-        ['Technology-2',np.mean(x2_ws_qb)] ,
-        ['Technology-3',np.mean(x3_ws_qb)] ,
-        ['Technology-4',np.mean(x4_ws_qb)] ,
-        ['Technology-5',np.mean(x5_ws_qb)],
-        ['Total Investment',np.mean(total_investment_ws_qb)] ,
-        ['Total Operation Cost',np.mean(total_operation_cost_ws_qb)] ,
-        ['Total objective cost (WS)', np.mean(total_operation_cost_ws_qb)+np.mean(total_investment_ws_qb)]]
+                                'Technology-1':x1_ws_qc ,
+                                'Technology-2':x2_ws_qc ,
+                                'Technology-3':x3_ws_qc ,
+                                'Technology-4':x4_ws_qc ,
+                                'Technology-5':x5_ws_qc ,
+                                'Total Investment':total_investment_ws_qc ,
+                                'Total Operation Cost':total_operation_cost_ws_qc ,
+                                'Total objective cost': np.array(total_investment_ws_qc)+
+                                                        np.array(total_operation_cost_ws_qc)})
+    res=[['Technology-1',np.mean(x1_ws_qc)] ,
+        ['Technology-2',np.mean(x2_ws_qc)] ,
+        ['Technology-3',np.mean(x3_ws_qc)] ,
+        ['Technology-4',np.mean(x4_ws_qc)] ,
+        ['Technology-5',np.mean(x5_ws_qc)],
+        ['Total Investment',np.mean(total_investment_ws_qc)] ,
+        ['Total Operation Cost',np.mean(total_operation_cost_ws_qc)] ,
+        ['Total objective cost (WS)', np.mean(total_operation_cost_ws_qc)+np.mean(total_investment_ws_qc)]]
     print(res_pd)
     print('------------------------- Average value of wait and see -------------------------------')
     print(tabulate(res, headers =['Items', 'Average Values']))
