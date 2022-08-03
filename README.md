@@ -2,8 +2,7 @@
 
 # stochastic-investment-planning
 
-This is a ![](https://img.shields.io/badge/Python-v%203.8-blue) implementation of a two-stage stochastic model used for investment planning under uncertainity. The modified problem is taken from [1]. This particual problem originally appeared in [2]. The problem is first implemented as a determinestic linear program using ![](https://img.shields.io/badge/Pyomo-v%206.4.1-orange) and later solved using ![](https://img.shields.io/badge/mpi--sppy-v%200.10-orange).
-
+This is a ![](https://img.shields.io/badge/Python-v%203.8-blue) implementation of a two-stage stochastic model used for investment planning under uncertainity. The modified problem is taken from [1]. This particual problem originally appeared in [2]. The problem is first implemented as a determinestic linear program using ![](https://img.shields.io/badge/Pyomo-v%206.4.1-orange) and later solved using [`mpi-sppy`](https://github.com/Pyomo/mpi-sppy).
 ## Files and Folders
 * :file_folder: 'run_me.ipynb' - The main Jupyter Noteboomk file which solves the problem with explanations
 * :file_folder: 'helper_function.py' - Python file containing all necessary functions required to run 'run_me.ipynb'
