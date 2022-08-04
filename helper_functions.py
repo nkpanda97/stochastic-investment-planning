@@ -853,7 +853,7 @@ def solve_ws_qa(demandmax=[],all_scenarios=pd.DataFrame(), create_model=Concrete
     print(tabulate(res, headers =['Items', 'Average Values']))
 
 
-def solve_ws_qb(all_scenarios=pd.DataFrame(), create_model=ConcreteModel()):
+def solve_ws_qb(all_scenarios=pd.DataFrame()):
     x1_ws_qb = []
     x2_ws_qb = []
     x3_ws_qb = []
@@ -862,7 +862,7 @@ def solve_ws_qb(all_scenarios=pd.DataFrame(), create_model=ConcreteModel()):
     total_investment_ws_qb = []
     total_operation_cost_ws_qb = []
     for s in tqdm(all_scenarios.iterrows()):
-        model = create_model(random_parameters=
+        model = create_model_qb(random_parameters=
                                         [s[1][0], s[1][1], s[1][2],s[1][3], s[1][4], s[1][5], s[1][6]])
 
         SolverFactory('gurobi').solve(model)
