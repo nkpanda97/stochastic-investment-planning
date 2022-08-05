@@ -7,13 +7,10 @@
 import numpy as np
 from pyomo.environ import *
 import matplotlib.pyplot as plt
-from mpl_toolkits import mplot3d
-# from pysp import *
 from tabulate import tabulate
 import mpisppy.utils.sputils as sputils
 import pandas as pd
 from itertools import product
-from mpisppy.opt.lshaped import LShapedMethod
 from numpy.random import default_rng
 from tqdm import tqdm
 
@@ -583,7 +580,7 @@ def generate_scenario_qa():
     plt.ylabel('Probability')
     plt.xticks(np.arange(27) + 1)
     plt.grid()
-    plt.savefig('discrete_scenario.png', dpi=300)
+    plt.savefig('results/mod1_discretization.png', dpi=300)
     plt.show()
 
     scen_prob_df = pd.DataFrame(index=scenario_names, data={'Probability': all_scenarios_prob})
@@ -703,7 +700,7 @@ def generate_scenario_qb(number_of_samples, plot=True, seed = None):
 
         # plt.tight_layout()
         plt.suptitle(r'Histograms for $\alpha_i$')
-        plt.savefig('mod2_scenario.png', dpi=300)
+        plt.savefig('results/mod2_discretization_m2.png', dpi=300)
         plt.show()
     return s_all, s_prob_df
 
@@ -775,7 +772,7 @@ def generate_scenario_qc(number_of_samples, plot=True, seed = None):
 
         # plt.tight_layout()
         plt.suptitle(r'Histograms for $\alpha_i$')
-        plt.savefig('mod2_scenario.png', dpi=300)
+        plt.savefig('mod2_discretization_m2.png', dpi=300)
         plt.show()
     return s_all, s_prob_df
 
